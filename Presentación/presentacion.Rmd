@@ -1,0 +1,126 @@
+---
+title: "Presentación m8"
+author: "Franco Solano"
+date: "`r Sys.Date()`"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(summarytools)
+library(tidyr)
+library(glue)
+datos <- read_csv("base_final_trabajo.csv")
+```
+
+## Introducción
+
+En esta presentación se resumen los principales hallazgos del análisis exploratorio. Se incluyen tablas descriptivas, gráficos y comparaciones entre países.
+
+---
+
+## Tabla resumen
+
+```{r}
+st_options(
+  plain.ascii = FALSE,
+  style = "rmarkdown",  
+  bootstrap.css = FALSE,
+  footnote = NA,        # para evitar pie de página
+)
+
+# Seleccionar variables clave
+datos_resumen <- datos %>%
+  select(new_cases, total_deaths, people_vaccinated_per_hundred, population)
+
+# Generar resumen con las estadísticas deseadas
+resumen <- summarytools::descr(
+  datos_resumen,
+  stats = c("mean", "sd", "min", "max"),
+  transpose = TRUE
+)
+
+# Imprimir la tabla
+print(resumen, method = "render", report.title = "Estadísticos Descriptivos")
+
+
+```
+
+---
+
+## Casos nuevos diarios en Uruguay
+
+```{r}
+datos_uy <- datos %>% filter(location == "Uruguay")
+
+ggplot(datos_uy, aes(x = date, y = new_cases)) +
+  geom_line(color = "steelblue") +
+  labs(title = "Casos nuevos diarios en Uruguay",
+       x = "Fecha", y = "Casos nuevos") +
+  theme_minimal()
+```
+
+---
+
+## Top 10 países por total de muertes
+
+```{r}
+top_muertes <- datos %>%
+  group_by(location) %>%
+  summarise(total_muertes = max(total_deaths, na.rm = TRUE)) %>%
+  arrange(desc(total_muertes)) %>%
+  slice_head(n = 10)
+
+ggplot(top_muertes, aes(x = reorder(location, total_muertes), y = total_muertes)) +
+  geom_col(fill = "darkred") +
+  coord_flip() +
+  labs(title = "Top 10 países por total de muertes",
+       x = "País", y = "Muertes acumuladas") +
+  theme_minimal()
+```
+
+---
+
+## Comparación de países por casos nuevos
+
+```{r}
+paises <- c("Uruguay", "Argentina", "Brasil", "Chile")
+datos_paises <- datos %>% filter(location %in% paises)
+
+ggplot(datos_paises, aes(x = date, y = new_cases, color = location)) +
+  geom_line() +
+  labs(title = "Casos nuevos diarios: Comparación entre países",
+       x = "Fecha", y = "Casos nuevos") +
+  theme_minimal()
+```
+
+---
+
+## Relación entre vacunación y muertes
+
+```{r}
+datos_vac <- datos %>%
+  group_by(location) %>%
+  summarise(vacunados = max(people_vaccinated_per_hundred, na.rm = TRUE),
+            muertes = max(total_deaths, na.rm = TRUE)) %>%
+  filter(!is.na(vacunados) & !is.na(muertes))
+
+ggplot(datos_vac, aes(x = vacunados, y = muertes)) +
+  geom_point(alpha = 0.7, color = "darkgreen") +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(title = "Vacunación vs Muertes acumuladas",
+       x = "% de personas vacunadas",
+       y = "Muertes acumuladas") +
+  theme_minimal()
+```
+
+---
+
+## Conclusiones
+
+- Se presentan gráficos y tablas que resumen el impacto de la pandemia.
+- Se comparan países y se analiza el vínculo entre vacunación y mortalidad.
+- El análisis permite identificar diferencias relevantes entre regiones.

@@ -1,0 +1,93 @@
+---
+title: "Informe"
+author: "Franco Solano"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(readr)
+library(knitr)
+library(ggplot2)
+library(scales)
+library(lubridate)
+```
+
+
+```{r}
+
+datos <- read_csv("base_final_trabajo.csv")
+
+
+tabla_resumen <- datos %>%
+  group_by(continent) %>%
+  summarise(
+    `Promedio casos diarios` = mean(new_cases, na.rm = TRUE),
+    `Máximo casos diarios` = max(new_cases, na.rm = TRUE),
+    `Promedio muertes diarias` = mean(new_deaths, na.rm = TRUE),
+    `Máximo muertes diarias` = max(new_deaths, na.rm = TRUE),
+    `Vacunación total (%)` = mean(people_fully_vaccinated_per_hundred, na.rm = TRUE)
+  )
+
+kable(tabla_resumen, digits = 1, caption = "Indicadores clave por continente")
+
+datos_graf <- datos %>%
+  filter(!is.na(continent)) %>%
+  group_by(date, continent) %>%
+  summarise(casos_prom = mean(new_cases, na.rm = TRUE), .groups = "drop")
+
+ggplot(datos_graf, aes(x = date, y = casos_prom, color = continent)) +
+  geom_line(size = 1) +
+  labs(title = "Casos diarios promedio por continente",
+       x = "Fecha", y = "Casos diarios promedio") +
+  scale_y_continuous(labels = comma) +
+  theme_minimal()
+
+top_contagios <- datos %>%
+  group_by(location) %>%
+  summarise(total_casos = max(total_cases, na.rm = TRUE)) %>%
+  arrange(desc(total_casos)) %>%
+  slice_head(n = 10)
+
+ggplot(top_contagios, aes(x = reorder(location, total_casos), y = total_casos)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 10 países con más contagios acumulados",
+       x = "País", y = "Total de casos") +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+
+top_contagios <- datos %>%
+  group_by(location) %>%
+  summarise(total_casos = max(total_cases, na.rm = TRUE)) %>%
+  arrange(desc(total_casos)) %>%
+  slice_head(n = 10)
+
+top_muertes <- datos %>%
+  group_by(location) %>%
+  summarise(total_muertes = max(total_deaths, na.rm = TRUE)) %>%
+  arrange(desc(total_muertes)) %>%
+  slice_head(n = 10)
+
+
+```
+
+## Comentarios sobre los resultados
+
+El continente con **mayor promedio de casos diarios** fue **`r tabla_resumen$continent[[which.max(tabla_resumen[["Promedio casos diarios"]])]]`**, con un promedio de `r format(round(max(tabla_resumen[["Promedio casos diarios"]], na.rm = TRUE), 0),big.mark=",")` casos nuevos diarios.
+
+En cuanto a muertes, el **pico máximo** se registró en **`r tabla_resumen$continent[[which.max(tabla_resumen[["Máximo muertes diarias"]])]]`**, alcanzando `r format(round(max(tabla_resumen[["Máximo muertes diarias"]], na.rm = TRUE), 0),big.mark=",")` muertes en un solo día.
+
+Respecto a la vacunación, el continente con **mayor proporción de población completamente vacunada** fue **`r tabla_resumen$continent[[which.max(tabla_resumen[["Vacunación total (%)"]])]]`**, con un promedio del `r round(max(tabla_resumen[["Vacunación total (%)"]], na.rm = TRUE), 1)`%.
+
+Entre los países con mayores niveles de contagios, el primero en la lista fue **`r top_contagios$location[[1]]`**, acumulando un total de `r scales::comma(top_contagios$total_casos[[1]])` casos. En cuanto a muertes, el país más afectado fue **`r top_muertes$location[[1]]`**, con `r scales::comma(top_muertes$total_muertes[[1]])` muertes acumuladas.
+
+
+
+
+
+
+
+
